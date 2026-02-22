@@ -1,0 +1,346 @@
+syntax = "proto3";
+
+package whatsapp.v1;
+
+option go_package = "github.com/ruanspies/wa-to-go;watogo";
+
+// WebhookPayload represents the top-level structure of a WhatsApp webhook payload.
+// This is the root object received in the HTTP POST body.
+message WebhookPayload {
+  // The object type, typically "whatsapp_business_account".
+  string object = 1;
+  // An array of entry objects. A webhook payload can contain multiple entries,
+  // although usually it contains just one.
+  repeated Entry entry = 2;
+}
+
+// Entry represents a single entry in the webhook payload.
+message Entry {
+  // The ID of the WhatsApp Business Account.
+  string id = 1;
+
+  // An array of changes. This captures the specific events or updates
+  // that triggered the webhook.
+  repeated Change changes = 2;
+}
+
+// Change represents a specific change event within an entry.
+message Change {
+  // The value object containing the details of the change.
+  Value value = 1;
+  // Field describes the type of field that changed, e.g., "messages".
+  // This helps identify which part of the account or message activity was updated.
+  string field = 2;
+}
+
+// Value contains the detailed data for a change event.
+message Value {
+  // The messaging product, typically "whatsapp".
+  string messaging_product = 1;
+  // Metadata about the business phone number that received the webhook.
+  Metadata metadata = 2;
+  // Array of contacts. Present in incoming messages.
+  // Provides information about the user who sent the message.
+  repeated Contact contacts = 3;
+  // Array of messages. Present in incoming messages.
+  // Contains the actual message content and details.
+  repeated Message messages = 4;
+  // Array of statuses. Present in outgoing message status updates.
+  // Examples: delivered, read, sent, failed.
+  repeated Status statuses = 5;
+
+  // Array of errors. Present if the webhook notification contains an error.
+  repeated Error errors = 6;
+}
+
+// Error represents an error object received in the webhook.
+message Error {
+  // Error code.
+  int32 code = 1;
+
+  // Error code title.
+  string title = 2;
+
+  // Error code message.
+  string message = 3;
+
+  // Error code details.
+  ErrorData error_data = 4;
+
+  // Link to error code documentation.
+  string href = 5;
+}
+
+// ErrorData contains detailed information about the error.
+message ErrorData {
+  // Detailed explanation of the error.
+  string details = 1;
+}
+
+// Metadata contains identification for the business phone number.
+message Metadata {
+  // The display phone number of the business.
+  string display_phone_number = 1;
+  // The ID of the phone number.
+  string phone_number_id = 2;
+}
+
+// Contact represents a WhatsApp user.
+message Contact {
+  // Profile information of the user.
+  Profile profile = 1;
+  // The WhatsApp ID of the user (phone number).
+  string wa_id = 2;
+  // Identity key hash.
+  // POPULATION CONDITION: Only included if identity change check is enabled.
+  // This allows you to verify if a user's identity key has changed.
+  string identity_key_hash = 3;
+}
+
+// Profile contains the user's profile information.
+message Profile {
+  // The user's name as defined in their WhatsApp profile.
+  string name = 1;
+}
+
+// Message represents a single message sent by a user to the business.
+// Message represents a single message sent by a user to the business.
+message Message {
+  // The phone number of the sender.
+  string from = 1;
+
+  // The unique ID of the message assigned by WhatsApp.
+  string id = 2;
+
+  // The timestamp when the WhatsApp server received the message from the user (Unix timestamp).
+  string timestamp = 3;
+
+  // The type of the message (e.g., "text", "image", "video", "audio").
+  string type = 4;
+  
+  // Content types - specific fields are populated based on the 'type'.
+  Text text = 5;
+  Image image = 6;
+  Video video = 7;
+  Audio audio = 8;
+  
+  // Context of the message.
+  // POPULATION CONDITION: Populated in two main cases:
+  // 1. If the message originated from a "Message business" button (contains referred_product).
+  // 2. If the message was forwarded to the business by a user (contains forwarded flags).
+  Context context = 9;
+
+  // Referral information.
+  // POPULATION CONDITION: Only included if the message was sent via a Click to WhatsApp ad.
+  Referral referral = 10;
+}
+
+// Text represents a text message payload.
+message Text {
+  // The body text of the message.
+  string body = 1;
+}
+
+// Image represents an image message payload.
+// Image represents an image message payload.
+message Image {
+  // Caption for the image, if provided by the user.
+  string caption = 1;
+
+  // The MIME type of the image (e.g., "image/jpeg", "image/png").
+  string mime_type = 2;
+
+  // The SHA-256 hash of the image file.
+  string sha256 = 3;
+
+  // The unique ID of the image object. Can be used to retrieve the media binary.
+  string id = 4;
+
+  // A direct URL to the image file. Note that this URL may expire or require auth headers.
+  string url = 5;
+}
+
+// Video represents a video message payload.
+// Video represents a video message payload.
+message Video {
+  // Caption for the video, if provided by the user.
+  string caption = 1;
+
+  // The MIME type of the video (e.g., "video/mp4").
+  string mime_type = 2;
+
+  // The SHA-256 hash of the video file.
+  string sha256 = 3;
+
+  // The unique ID of the video object. Can be used to retrieve the media binary.
+  string id = 4;
+
+  // A direct URL to the video file. Note that this URL may expire or require auth headers.
+  string url = 5;
+}
+
+// Audio represents an audio message payload.
+// Audio represents an audio message payload.
+message Audio {
+  // The MIME type of the audio file (e.g., "audio/ogg").
+  string mime_type = 1;
+
+  // The SHA-256 hash of the audio file.
+  string sha256 = 2;
+
+  // The unique ID of the audio object. Can be used to retrieve the media binary.
+  string id = 3;
+
+  // A direct URL to the audio file. Note that this URL may expire or require auth headers.
+  string url = 4;
+
+  // Indicates if the audio is a voice message recorded by the user.
+  // "true" if it is a voice note; "false" if it is a pre-recorded audio file.
+  bool voice = 5;
+}
+
+// Context provides context for a message, such as if it was forwarded or replying to a product.
+message Context {
+  // The phone number of the sender of the context message (business number).
+  string from = 1;
+
+  // The ID of the message being replied to or referenced.
+  string id = 2;
+
+  // Product details if the message is in reference to a product from a catalog.
+  ReferredProduct referred_product = 3;
+
+  // Indicates if the message was forwarded.
+  // POPULATION CONDITION: Only included if the message was forwarded 5 times or less.
+  bool forwarded = 4;
+
+  // Indicates if the message was frequently forwarded.
+  // POPULATION CONDITION: Only included if the message was forwarded more than 5 times.
+  bool frequently_forwarded = 5;
+}
+
+// ReferredProduct contains details about a product being referenced in a message.
+message ReferredProduct {
+  // The catalog ID.
+  string catalog_id = 1;
+
+  // The product retailer ID.
+  string product_retailer_id = 2;
+}
+
+// Referral contains information about the ad source that triggered the message.
+// Referral contains information about the ad source that triggered the message.
+message Referral {
+  // The URL of the ad source that the user clicked.
+  string source_url = 1;
+
+  // The ID of the ad source (e.g., the specific Meta ad ID).
+  string source_id = 2;
+
+  // The type of source. Currently supported: "ad".
+  string source_type = 3;
+
+  // The body text of the ad that the user saw.
+  string body = 4;
+
+  // The headline of the ad that the user saw.
+  string headline = 5;
+
+  // The media type involved in the ad (e.g., "image", "video").
+  string media_type = 6;
+
+  // URL of the image used in the ad.
+  string image_url = 7;
+
+  // URL of the video used in the ad.
+  string video_url = 8;
+
+  // URL of the video thumbnail used in the ad.
+  string thumbnail_url = 9;
+
+  // Click to WhatsApp (CTWA) Click ID.
+  // POPULATION CONDITION: Omitted if message sent via a WhatsApp Status ad placement.
+  // This identifier tracks the specific click on the ad.
+  string ctwa_clid = 10;
+
+  // The welcome message configured for the ad that may be shown to the user.
+  WelcomeMessage welcome_message = 11;
+}
+
+// WelcomeMessage holds the greeting text from an ad.
+message WelcomeMessage {
+  string text = 1;
+}
+
+// Status represents the status of an outgoing message.
+message Status {
+  // The ID of the message.
+  string id = 1;
+
+  // The status of the message (e.g., "delivered", "read", "sent", "failed").
+  string status = 2;
+
+  // Timestamp of the status change.
+  string timestamp = 3;
+
+  // The WhatsApp ID of the recipient.
+  string recipient_id = 4;
+
+  // Conversation details associated with this message status.
+  Conversation conversation = 5;
+
+  // Pricing information for the message.
+  Pricing pricing = 6;
+}
+
+// Conversation represents the conversation context for pricing and billing.
+message Conversation {
+  // The ID of the conversation.
+  string id = 1;
+
+  // The origin of the conversation.
+  Origin origin = 2;
+}
+
+// Origin describes how the conversation started.
+// Origin describes how the conversation started.
+message Origin {
+  // The type of origin indicating how the conversation was initiated.
+  // Examples: "service" (user-initiated), "utility", "marketing", "authentication" (business-initiated).
+  string type = 1;
+}
+
+// Pricing contains billable information about the message.
+// Pricing contains billable information about the message.
+message Pricing {
+  // Indicates if the message is billable.
+  bool billable = 1;
+
+  // The pricing model used. Example: "CBP" (Conversational Business Pricing).
+  string pricing_model = 2;
+
+  // The category of the conversation for pricing purposes.
+  // Examples: "business_initiated", "user_initiated", "service", "utility", "marketing".
+  string category = 3;
+}
+
+// VerificationRequest represents the parameters of a GET request used by Meta
+// to verify a webhook endpoint.
+message VerificationRequest {
+  message Hub {
+    // mode: The mode of the request. For verification, this should be "subscribe".
+    string mode = 1;
+
+    // challenge: A random string generated by Meta that must be returned
+    // as a plain text response if the request is valid (status 200).
+    string challenge = 2;
+
+    // verify_token: A verification string chosen by the business.
+    // This must match the Verify Token configured in the App Dashboard.
+    string verify_token = 3;
+  }
+  // The hub object containing verification details.
+  Hub hub = 1;
+}
+
+
