@@ -1,2 +1,3 @@
 # wa-to-go
-My attempt at a Go SDK for WhatsApp
+
+Making it easier to build WhatsApp integrations in Go.
